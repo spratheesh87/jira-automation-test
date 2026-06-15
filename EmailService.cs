@@ -10,6 +10,7 @@ namespace NotificationPlatform.Services
         private readonly HttpClient _httpClient;
         private string _cachedToken;
         private DateTime _tokenExpiry;
+        
 
         public EmailService(HttpClient httpClient)
         {
