@@ -1,64 +1,7 @@
-name: Auto-Generate PR Description
-
-on:
-  pull_request:
-    types: [opened]
-
+name: Manual Testing Mode
+on: [push]
 jobs:
-  update-pr-description:
+  skip:
     runs-on: ubuntu-latest
-    permissions:
-      pull-requests: write
     steps:
-      - name: Generate PR Description via OpenAI
-        uses: actions/github-script@v7
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        with:
-          script: |
-            const { data: diff } = await github.rest.pulls.get({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: context.issue.number,
-              mediaType: { format: 'diff' }
-            });
-            
-            const prompt = `You are an expert software engineer. Summarize the following code diff into a Markdown PR description.
-            You MUST format your response exactly like this:
-            
-            ### 1. The "Why" (Business Context)
-            [Explain the business value]
-            
-            ### 2. Architectural Trade-offs & Technical Notes
-            [Bullet points of technical changes]
-            
-            ### 3. Step-by-Step Testing Instructions for QA
-            [Step by step instructions including Prerequisites, Happy Path, and Edge Cases]
-            
-            Here is the code diff:
-            ${diff.substring(0, 4000)}`;
-            
-            const response = await fetch('https://api.openai.com/v1/chat/completions', {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({
-                model: 'gpt-3.5-turbo',
-                messages: [{ role: 'user', content: prompt }]
-              })
-            }).then(res => res.json());
-            
-            // ERROR HANDLING: If OpenAI sends an error, print it and stop.
-            if (response.error) {
-              console.error("OpenAI Error:", response.error);
-              throw new Error(`OpenAI API failed: ${response.error.message}`);
-            }
-            
-            await github.rest.pulls.update({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: context.issue.number,
-              body: response.choices[0].message.content
-            });
+      - run: echo "Skipping AI generation for manual test"
