@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 
 namespace NotificationPlatform.Services
 {
+    
     public class EmailService
     {
         private readonly HttpClient _httpClient;
