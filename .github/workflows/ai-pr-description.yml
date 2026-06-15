@@ -10,21 +10,22 @@ jobs:
     permissions:
       pull-requests: write
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Run AI PR Reviewer
-        uses: coderabbitai/ai-pr-reviewer@latest
+      - name: Generate PR Description via OpenAI
+        uses: actions/github-script@v7
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         with:
-          debug: false
-          review_simple_changes: false
-          review_comment_lgtm: false
-          # This custom prompt forces the AI to use your Jira format
-          custom_prompts: |
-            You are an expert developer. Summarize the pull request changes into a Markdown description.
+          script: |
+            // 1. Get the raw code diff from the Pull Request
+            const { data: diff } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+              mediaType: { format: 'diff' }
+            });
+            
+            // 2. Build the exact prompt with your Jira template
+            const prompt = `You are an expert software engineer. Summarize the following code diff into a Markdown PR description.
             You MUST format your response exactly like this:
             
             ### 1. The "Why" (Business Context)
@@ -35,3 +36,27 @@ jobs:
             
             ### 3. Step-by-Step Testing Instructions for QA
             [Step by step instructions including Prerequisites, Happy Path, and Edge Cases]
+            
+            Here is the code diff:
+            ${diff.substring(0, 4000)}`; // Caps the diff length to save AI tokens
+            
+            // 3. Send the diff to OpenAI
+            const response = await fetch('https://api.openai.com/v1/chat/completions', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                model: 'gpt-3.5-turbo',
+                messages: [{ role: 'user', content: prompt }]
+              })
+            }).then(res => res.json());
+            
+            // 4. Update the empty PR description box!
+            await github.rest.pulls.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+              body: response.choices[0].message.content
+            });
