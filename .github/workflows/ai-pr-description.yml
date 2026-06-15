@@ -16,7 +16,6 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         with:
           script: |
-            // 1. Get the raw code diff from the Pull Request
             const { data: diff } = await github.rest.pulls.get({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -24,7 +23,6 @@ jobs:
               mediaType: { format: 'diff' }
             });
             
-            // 2. Build the exact prompt with your Jira template
             const prompt = `You are an expert software engineer. Summarize the following code diff into a Markdown PR description.
             You MUST format your response exactly like this:
             
@@ -38,9 +36,8 @@ jobs:
             [Step by step instructions including Prerequisites, Happy Path, and Edge Cases]
             
             Here is the code diff:
-            ${diff.substring(0, 4000)}`; // Caps the diff length to save AI tokens
+            ${diff.substring(0, 4000)}`;
             
-            // 3. Send the diff to OpenAI
             const response = await fetch('https://api.openai.com/v1/chat/completions', {
               method: 'POST',
               headers: {
@@ -53,7 +50,12 @@ jobs:
               })
             }).then(res => res.json());
             
-            // 4. Update the empty PR description box!
+            // ERROR HANDLING: If OpenAI sends an error, print it and stop.
+            if (response.error) {
+              console.error("OpenAI Error:", response.error);
+              throw new Error(`OpenAI API failed: ${response.error.message}`);
+            }
+            
             await github.rest.pulls.update({
               owner: context.repo.owner,
               repo: context.repo.repo,
