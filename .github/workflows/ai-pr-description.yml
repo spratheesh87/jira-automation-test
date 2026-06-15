@@ -1,0 +1,37 @@
+name: Auto-Generate PR Description
+
+on:
+  pull_request:
+    types: [opened]
+
+jobs:
+  update-pr-description:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run AI PR Reviewer
+        uses: coderabbitai/openai-pr-reviewer@latest
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        with:
+          debug: false
+          review_simple_changes: false
+          review_comment_lgtm: false
+          # This custom prompt forces the AI to use your Jira format
+          custom_prompts: |
+            You are an expert developer. Summarize the pull request changes into a Markdown description.
+            You MUST format your response exactly like this:
+            
+            ### 1. The "Why" (Business Context)
+            [Explain the business value]
+            
+            ### 2. Architectural Trade-offs & Technical Notes
+            [Bullet points of technical changes]
+            
+            ### 3. Step-by-Step Testing Instructions for QA
+            [Step by step instructions including Prerequisites, Happy Path, and Edge Cases]
