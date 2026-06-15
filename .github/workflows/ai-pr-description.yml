@@ -1,7 +1,40 @@
-name: Manual Testing Mode
-on: [push]
+name: Send PR Description to Jira
+
+on:
+  pull_request:
+    types: [opened]
+
 jobs:
-  skip:
+  send-to-jira:
     runs-on: ubuntu-latest
     steps:
-      - run: echo "Skipping AI generation for manual test"
+      - name: Post PR Description as Jira Comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // 1. Get the description the developer manually typed in GitHub
+            const prBody = context.payload.pull_request.body || "No description provided.";
+            const prUrl = context.payload.pull_request.html_url;
+            
+            // 2. Format a message cleanly
+            const commentBody = `**Manual PR Summary & Testing Steps:**\n\n${prBody}\n\n*Link to PR:* ${prUrl}`;
+            
+            // 3. Send it directly to your Jira Cloud domain
+            // Note: You would replace 'your-domain' with 'spratheesh87' and wire in your Jira credentials.
+            await fetch('https://your-domain.atlassian.net/rest/api/3/issue/SCRUM-5/comment', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Basic ${Buffer.from('YOUR_JIRA_EMAIL:YOUR_JIRA_API_TOKEN').toString('base64')}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                body: {
+                  type: "doc",
+                  version: 1,
+                  content: [{
+                    type: "paragraph",
+                    content: [{ type: "text", text: commentBody }]
+                  }]
+                }
+              })
+            });
